@@ -10,7 +10,11 @@ Features:
   - expand/collapse nodes in the tree
   - expand/collapse the entire tree
   - select scalar values in the tree
-  
+
+## History
+
+I originally published this as [Microsoft/elm-json-tree-view](https://github.com/microsoft/elm-json-tree-view), but in May 2019 Microsoft changed their GitHub organization name which broke `elm package`. Rather than waiting for a fix in the Elm package repository, I have decided to move all work over to my personal GitHub account and re-publish.
+
 ## Usage
 
 See the [docs](http://package.elm-lang.org/packages/klazuka/elm-json-tree-view/latest) or look at the example app's [source code](https://github.com/klazuka/elm-json-tree-view/blob/master/example/src/Main.elm).
