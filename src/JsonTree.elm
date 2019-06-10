@@ -34,6 +34,11 @@ Features:
 
 @docs expandAll, collapseToDepth
 
+
+# Customizing Colors
+
+@docs Colors, defaultColors
+
 -}
 
 import Dict exposing (Dict)

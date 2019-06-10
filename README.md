@@ -29,7 +29,7 @@ main =
         |> Result.map (\tree -> JsonTree.view tree config JsonTree.defaultState)
         |> Result.withDefault (text "Failed to parse JSON")
 
-config = { onSelect = Nothing, toMsg = always () }
+config = { onSelect = Nothing, toMsg = always (), colors = JsonTree.defaultColors }
 ```
 
 Note that the above example is only meant to give you a taste. It does not wire everything up, which means that some things will be broken (i.e. expand/collapse). See the [docs](http://package.elm-lang.org/packages/klazuka/elm-json-tree-view/latest) and the example app for more details. 
