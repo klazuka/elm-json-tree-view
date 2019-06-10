@@ -5398,11 +5398,14 @@ var author$project$Main$viewInputArea = function (model) {
 					]))
 			]));
 };
+var author$project$JsonTree$defaultColors = {bool: 'firebrick', _null: 'gray', number: 'blue', selectable: '#fafad2', string: 'green'};
 var author$project$JsonTree$css = {
-	bool: _List_fromArray(
-		[
-			_Utils_Tuple2('color', 'firebrick')
-		]),
+	bool: function (colors) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple2('color', colors.bool)
+			]);
+	},
 	collapser: _List_fromArray(
 		[
 			_Utils_Tuple2('position', 'absolute'),
@@ -5418,28 +5421,36 @@ var author$project$JsonTree$css = {
 		[
 			_Utils_Tuple2('position', 'relative')
 		]),
-	_null: _List_fromArray(
-		[
-			_Utils_Tuple2('color', 'gray')
-		]),
-	number: _List_fromArray(
-		[
-			_Utils_Tuple2('color', 'blue')
-		]),
+	_null: function (colors) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple2('color', colors._null)
+			]);
+	},
+	number: function (colors) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple2('color', colors.number)
+			]);
+	},
 	root: _List_fromArray(
 		[
 			_Utils_Tuple2('font-family', 'monospace'),
 			_Utils_Tuple2('white-space', 'pre')
 		]),
-	selectable: _List_fromArray(
-		[
-			_Utils_Tuple2('background-color', '#fafad2'),
-			_Utils_Tuple2('cursor', 'pointer')
-		]),
-	string: _List_fromArray(
-		[
-			_Utils_Tuple2('color', 'green')
-		]),
+	selectable: function (colors) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple2('background-color', colors.selectable),
+				_Utils_Tuple2('cursor', 'pointer')
+			]);
+	},
+	string: function (colors) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple2('color', colors.string)
+			]);
+	},
 	ul: _List_fromArray(
 		[
 			_Utils_Tuple2('list-style-type', 'none'),
@@ -5467,7 +5478,7 @@ var elm$virtual_dom$VirtualDom$node = function (tag) {
 		_VirtualDom_noScript(tag));
 };
 var elm$html$Html$node = elm$virtual_dom$VirtualDom$node;
-var author$project$JsonTree$hoverStyles = function () {
+var author$project$JsonTree$hoverStyles = function (config) {
 	var selectableStyleString = A2(
 		elm$core$String$join,
 		'\n',
@@ -5478,7 +5489,7 @@ var author$project$JsonTree$hoverStyles = function () {
 				var value = _n0.b;
 				return name + (': ' + (value + ';'));
 			},
-			author$project$JsonTree$css.selectable));
+			author$project$JsonTree$css.selectable(config.colors)));
 	var styleBody = '.' + (author$project$JsonTree$selectableNodeClass + (':hover {\n' + (selectableStyleString + '\n}\n')));
 	return A3(
 		elm$html$Html$node,
@@ -5488,7 +5499,7 @@ var author$project$JsonTree$hoverStyles = function () {
 			[
 				elm$html$Html$text(styleBody)
 			]));
-}();
+};
 var author$project$JsonTree$styleList = function (styles) {
 	return A2(
 		elm$core$List$map,
@@ -6133,6 +6144,7 @@ var author$project$JsonTree$viewDict = F5(
 	});
 var author$project$JsonTree$viewNodeInternal = F4(
 	function (depth, config, node, state) {
+		var colors = config.colors;
 		var boolToString = function (bool) {
 			return bool ? 'true' : 'false';
 		};
@@ -6140,12 +6152,17 @@ var author$project$JsonTree$viewNodeInternal = F4(
 		switch (_n0.$) {
 			case 'TString':
 				var str = _n0.a;
-				return A4(author$project$JsonTree$viewScalar, author$project$JsonTree$css.string, '\"' + (str + '\"'), node, config);
+				return A4(
+					author$project$JsonTree$viewScalar,
+					author$project$JsonTree$css.string(colors),
+					'\"' + (str + '\"'),
+					node,
+					config);
 			case 'TFloat':
 				var x = _n0.a;
 				return A4(
 					author$project$JsonTree$viewScalar,
-					author$project$JsonTree$css.number,
+					author$project$JsonTree$css.number(colors),
 					elm$core$String$fromFloat(x),
 					node,
 					config);
@@ -6153,12 +6170,17 @@ var author$project$JsonTree$viewNodeInternal = F4(
 				var bool = _n0.a;
 				return A4(
 					author$project$JsonTree$viewScalar,
-					author$project$JsonTree$css.bool,
+					author$project$JsonTree$css.bool(colors),
 					boolToString(bool),
 					node,
 					config);
 			case 'TNull':
-				return A4(author$project$JsonTree$viewScalar, author$project$JsonTree$css._null, 'null', node, config);
+				return A4(
+					author$project$JsonTree$viewScalar,
+					author$project$JsonTree$css._null(colors),
+					'null',
+					node,
+					config);
 			case 'TList':
 				var nodes = _n0.a;
 				return A5(author$project$JsonTree$viewArray, depth, nodes, node.keyPath, config, state);
@@ -6174,7 +6196,7 @@ var author$project$JsonTree$view = F3(
 			author$project$JsonTree$styleList(author$project$JsonTree$css.root),
 			A2(
 				elm$core$List$cons,
-				author$project$JsonTree$hoverStyles,
+				author$project$JsonTree$hoverStyles(config),
 				A4(author$project$JsonTree$viewNodeInternal, 0, config, node, state)));
 	});
 var author$project$Main$CollapseAll = {$: 'CollapseAll'};
@@ -6260,6 +6282,7 @@ var author$project$Main$viewJsonTree = function (model) {
 			]));
 	var config = function (allowSelection) {
 		return {
+			colors: author$project$JsonTree$defaultColors,
 			onSelect: allowSelection ? elm$core$Maybe$Just(author$project$Main$Selected) : elm$core$Maybe$Nothing,
 			toMsg: author$project$Main$SetTreeViewState
 		};

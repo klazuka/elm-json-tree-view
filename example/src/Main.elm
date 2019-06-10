@@ -2,11 +2,22 @@
 -- Licensed under the MIT License.
 
 
-module Main exposing (Model, Msg(..), exampleJsonInput, init, main, update, view, viewInputArea, viewJsonTree, viewSelections)
+module Main exposing
+    ( Model
+    , Msg(..)
+    , exampleJsonInput
+    , init
+    , main
+    , update
+    , view
+    , viewInputArea
+    , viewJsonTree
+    , viewSelections
+    )
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (checked, class, style, type_, value)
+import Html.Attributes exposing (checked, style, type_, value)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Json.Decode as Decode
 import JsonTree exposing (defaultColors)
@@ -151,7 +162,7 @@ viewJsonTree model =
                 ]
 
         config allowSelection =
-            { colors = { defaultColors | stringHighLightColor = "purple" }
+            { colors = defaultColors
             , onSelect =
                 if allowSelection then
                     Just Selected
