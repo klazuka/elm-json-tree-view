@@ -2,14 +2,14 @@
 -- Licensed under the MIT License.
 
 
-module Main exposing (..)
+module Main exposing (Model, Msg(..), exampleJsonInput, init, main, update, view, viewInputArea, viewJsonTree, viewSelections)
 
 import Browser
-import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes exposing (checked, class, style, type_, value)
 import Html.Events exposing (onCheck, onClick, onInput)
-import JsonTree
+import Json.Decode as Decode
+import JsonTree exposing (defaultColors)
 
 
 exampleJsonInput =
@@ -91,7 +91,7 @@ update msg model =
             { model
                 | clickToSelectEnabled = not model.clickToSelectEnabled
                 , selections = []
-              }
+            }
 
         Selected keyPath ->
             { model | selections = model.selections ++ [ keyPath ] }
@@ -151,7 +151,8 @@ viewJsonTree model =
                 ]
 
         config allowSelection =
-            { onSelect =
+            { colors = { defaultColors | stringHighLightColor = "purple" }
+            , onSelect =
                 if allowSelection then
                     Just Selected
 
@@ -168,7 +169,7 @@ viewJsonTree model =
                 JsonTree.view rootNode (config model.clickToSelectEnabled) model.treeState
 
             Err e ->
-                pre [] [ text ("Invalid JSON: " ++ Decode.errorToString e)]
+                pre [] [ text ("Invalid JSON: " ++ Decode.errorToString e) ]
         ]
 
 

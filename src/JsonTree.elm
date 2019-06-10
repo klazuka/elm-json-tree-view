@@ -2,20 +2,12 @@
 -- Licensed under the MIT License.
 
 
-module JsonTree
-    exposing
-        ( Config
-        , KeyPath
-        , Node
-        , State
-        , TaggedValue(..)
-        , collapseToDepth
-        , defaultState
-        , expandAll
-        , parseString
-        , parseValue
-        , view
-        )
+module JsonTree exposing
+    ( parseString, parseValue, view
+    , Config, State, defaultState, Node, TaggedValue(..), KeyPath
+    , expandAll, collapseToDepth
+    , Colors, defaultColors
+    )
 
 {-| This library provides a JSON tree view. You feed it JSON, and it transforms it into
 interactive HTML.
@@ -75,6 +67,43 @@ type TaggedValue
 -}
 type alias KeyPath =
     String
+
+
+{-| The colors used for syntax highlighting. They must be valid Css colors.
+-}
+type alias Colors =
+    { stringHighLightColor : String
+    , numberHighLightColor : String
+    , boolHighLightColor : String
+    , nullHighLightColor : String
+    , selectableHighLightColor : String
+    }
+
+
+{-| The defaults colors
+-}
+defaultColors : Colors
+defaultColors =
+    { stringHighLightColor = "green"
+    , numberHighLightColor = "blue"
+    , boolHighLightColor = "firebrick"
+    , nullHighLightColor = "gray"
+    , selectableHighLightColor = "#fafad2"
+    }
+
+
+type alias Css =
+    { root : List ( String, String )
+    , ul : List ( String, String )
+    , li : List ( String, String )
+    , collapser : List ( String, String )
+    , fieldName : List ( String, String )
+    , string : List ( String, String )
+    , number : List ( String, String )
+    , bool : List ( String, String )
+    , null : List ( String, String )
+    , selectable : List ( String, String )
+    }
 
 
 {-| Parse a JSON value as a tree.
@@ -159,8 +188,8 @@ annotate pathSoFar node =
 view : Node -> Config msg -> State -> Html msg
 view node config state =
     div
-        (styleList css.root)
-        (hoverStyles :: viewNodeInternal 0 config node state)
+        (styleList (css config).root)
+        (hoverStyles config :: viewNodeInternal 0 config node state)
 
 
 {-| Configuration of the JSON tree view. It describes how to map events in the tree view
@@ -168,6 +197,8 @@ into events that your app understands.
 
 Since the `Config` contains functions, it should never be held in your model. It should
 only appear in your `view` code.
+
+`colors` may be defaultColors, or another color set
 
 `onSelect` should be set to `Nothing` for most users. However, if you want to make the
 tree's leaf nodes selectable, you should provide a function that takes the selected `KeyPath`
@@ -178,7 +209,8 @@ the previous state.
 
 -}
 type alias Config msg =
-    { onSelect : Maybe (KeyPath -> msg)
+    { colors : Colors
+    , onSelect : Maybe (KeyPath -> msg)
     , toMsg : State -> msg
     }
 
@@ -300,16 +332,16 @@ viewNodeInternal depth config node state =
     in
     case node.value of
         TString str ->
-            viewScalar css.string ("\"" ++ str ++ "\"") node config
+            viewScalar (css config).string ("\"" ++ str ++ "\"") node config
 
         TFloat x ->
-            viewScalar css.number (String.fromFloat x) node config
+            viewScalar (css config).number (String.fromFloat x) node config
 
         TBool bool ->
-            viewScalar css.bool (boolToString bool) node config
+            viewScalar (css config).bool (boolToString bool) node config
 
         TNull ->
-            viewScalar css.null "null" node config
+            viewScalar (css config).null "null" node config
 
         TList nodes ->
             viewArray depth nodes node.keyPath config state
@@ -345,7 +377,7 @@ viewCollapser depth config newStateThunk displayText =
     else
         span
             (lazyStateChangeOnClick newStateThunk config.toMsg
-                :: styleList css.collapser
+                :: styleList (css config).collapser
             )
             [ text displayText ]
 
@@ -375,13 +407,13 @@ viewArray depth nodes keyPath config state =
             else
                 [ viewCollapseButton depth keyPath config state
                 , ul
-                    (styleList css.ul)
+                    (styleList (css config).ul)
                     (List.map viewListItem nodes)
                 ]
 
         viewListItem node =
             li
-                (styleList css.li)
+                (styleList (css config).li)
                 (List.append (viewNodeInternal (depth + 1) config node state) [ text "," ])
     in
     [ text "[" ] ++ innerContent ++ [ text "]" ]
@@ -402,14 +434,14 @@ viewDict depth dict keyPath config state =
             else
                 [ viewCollapseButton depth keyPath config state
                 , ul
-                    (styleList css.ul)
+                    (styleList (css config).ul)
                     (List.map viewListItem (Dict.toList dict))
                 ]
 
         viewListItem ( fieldName, node ) =
             li
-                (styleList css.li)
-                ([ span (styleList css.fieldName) [ text fieldName ]
+                (styleList (css config).li)
+                ([ span (styleList (css config).fieldName) [ text fieldName ]
                  , text ": "
                  ]
                     ++ viewNodeInternal (depth + 1) config node state
@@ -423,7 +455,8 @@ viewDict depth dict keyPath config state =
 -- STYLES
 
 
-css =
+css : Config msg -> Css
+css config =
     { root =
         [ ( "font-family", "monospace" )
         , ( "white-space", "pre" )
@@ -446,19 +479,19 @@ css =
         [ ( "font-weight", "bold" )
         ]
     , string =
-        [ ( "color", "green" )
+        [ ( "color", config.colors.stringHighLightColor )
         ]
     , number =
-        [ ( "color", "blue" )
+        [ ( "color", config.colors.numberHighLightColor )
         ]
     , bool =
-        [ ( "color", "firebrick" )
+        [ ( "color", config.colors.boolHighLightColor )
         ]
     , null =
-        [ ( "color", "gray" )
+        [ ( "color", config.colors.nullHighLightColor )
         ]
     , selectable =
-        [ ( "background-color", "#fafad2" )
+        [ ( "background-color", config.colors.selectableHighLightColor )
         , ( "cursor", "pointer" )
         ]
     }
@@ -472,11 +505,11 @@ styleList styles =
 {-| Inserts a `<style>...</style>` element into the DOM in order to style
 CSS pseudo-elements such as hover. This is the technique used by elm-css.
 -}
-hoverStyles : Html msg
-hoverStyles =
+hoverStyles : Config msg -> Html msg
+hoverStyles config =
     let
         selectableStyleString =
-            css.selectable
+            (css config).selectable
                 |> List.map (\( name, value ) -> name ++ ": " ++ value ++ ";")
                 |> String.join "\n"
 
