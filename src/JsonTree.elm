@@ -7,6 +7,7 @@ module JsonTree exposing
     , Config, State, defaultState, Node, TaggedValue(..), KeyPath
     , expandAll, collapseToDepth
     , Colors, defaultColors
+    , stateToJson, stateFromJson
     )
 
 {-| This library provides a JSON tree view. You feed it JSON, and it transforms it into
@@ -39,6 +40,11 @@ Features:
 
 @docs Colors, defaultColors
 
+
+# Json Conversion
+
+@docs stateToJson, stateFromJson
+
 -}
 
 import Dict exposing (Dict)
@@ -46,6 +52,7 @@ import Html exposing (Attribute, Html, button, div, li, span, text, ul)
 import Html.Attributes exposing (class, id, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Set exposing (Set)
 
 
@@ -236,6 +243,20 @@ type State
 defaultState : State
 defaultState =
     stateFullyExpanded
+
+
+{-| Encodes the state of a tree into JSON.
+-}
+stateToJson : State -> Encode.Value
+stateToJson (State keyPaths) =
+    Encode.set Encode.string keyPaths
+
+
+{-| Decode the state of a tree from JSON.
+-}
+stateFromJson : Decoder State
+stateFromJson =
+    Decode.map (State << Set.fromList) (Decode.list Decode.string)
 
 
 {-| Collapses any nodes deeper than `maxDepth`.
