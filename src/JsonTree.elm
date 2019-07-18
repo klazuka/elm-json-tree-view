@@ -41,7 +41,9 @@ Features:
 @docs Colors, defaultColors
 
 
-# Json Conversion
+# Uncommon/Advanced Stuff
+
+**Note:** These are rarely needed, but they are there if you need it.
 
 @docs stateToJson, stateFromJson
 
