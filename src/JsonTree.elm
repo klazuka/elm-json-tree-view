@@ -8,6 +8,7 @@ module JsonTree exposing
     , expandAll, collapseToDepth
     , Colors, defaultColors
     , stateToJson, stateFromJson
+    , KeyPathComponent(..)
     )
 
 {-| This library provides a JSON tree view. You feed it JSON, and it transforms it into
@@ -55,7 +56,9 @@ import Html.Attributes exposing (class, id, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Set exposing (Set)
+import Set.Any as Set exposing (AnySet)
+
+type alias Set key val = AnySet key val
 
 
 {-| A node in the tree
@@ -77,10 +80,65 @@ type TaggedValue
     | TNull
 
 
+-- [decgen-start]
 {-| The path to a piece of data in the tree.
 -}
 type alias KeyPath =
-    String
+    List KeyPathComponent
+
+type KeyPathComponent =
+    ObjectAccessor String
+    | IndexAccessor Int
+
+-- [decgen-generated-start] -- DO NOT MODIFY or remove this line
+decodeKeyPath =
+   Decode.list decodeKeyPathComponent
+
+decodeKeyPathComponent =
+   Decode.field "Constructor" Decode.string |> Decode.andThen decodeKeyPathComponentHelp
+
+decodeKeyPathComponentHelp constructor =
+   case constructor of
+      "ObjectAccessor" ->
+         Decode.map
+            ObjectAccessor
+               ( Decode.field "A1" Decode.string )
+      "IndexAccessor" ->
+         Decode.map
+            IndexAccessor
+               ( Decode.field "A1" Decode.int )
+      other->
+         Decode.fail <| "Unknown constructor for type KeyPathComponent: " ++ other
+
+encodeKeyPath a =
+   (Encode.list encodeKeyPathComponent) a
+
+encodeKeyPathComponent a =
+   case a of
+      ObjectAccessor a1->
+         Encode.object
+            [ ("Constructor", Encode.string "ObjectAccessor")
+            , ("A1", Encode.string a1)
+            ]
+      IndexAccessor a1->
+         Encode.object
+            [ ("Constructor", Encode.string "IndexAccessor")
+            , ("A1", Encode.int a1)
+            ] 
+-- [decgen-end]
+
+
+newSet = Set.fromList keyPathToString
+
+keyPathToString : KeyPath -> String
+keyPathToString =
+    List.map accessorToString
+    >> String.join " "
+
+accessorToString a =
+    case a of
+        ObjectAccessor o -> o
+        IndexAccessor i -> String.fromInt i
 
 
 {-| The colors to be used when showing elements of the JSON Tree.
@@ -126,8 +184,9 @@ type alias Css =
 parseValue : Decode.Value -> Result Decode.Error Node
 parseValue json =
     let
+        rootKeyPath : KeyPath
         rootKeyPath =
-            ""
+            []
 
         decoder =
             Decode.map (annotate rootKeyPath) coreDecoder
@@ -146,8 +205,9 @@ parseString string =
 coreDecoder : Decoder Node
 coreDecoder =
     let
+        makeNode : TaggedValue -> {value : TaggedValue, keyPath : KeyPath}
         makeNode v =
-            { value = v, keyPath = "" }
+            { value = v, keyPath = [] }
     in
     Decode.oneOf
         [ Decode.map (makeNode << TString) Decode.string
@@ -159,14 +219,14 @@ coreDecoder =
         ]
 
 
-annotate : String -> Node -> Node
+annotate : KeyPath -> Node -> Node
 annotate pathSoFar node =
     let
         annotateList index val =
-            annotate (pathSoFar ++ "[" ++ String.fromInt index ++ "]") val
+            annotate (pathSoFar ++ [IndexAccessor index]) val
 
         annotateDict fieldName val =
-            annotate (pathSoFar ++ "." ++ fieldName) val
+            annotate (pathSoFar ++ [ObjectAccessor fieldName]) val
     in
     case node.value of
         TString _ ->
@@ -237,7 +297,7 @@ You should store the current state in your model.
 
 -}
 type State
-    = State (Set KeyPath)
+    = State (AnySet String KeyPath)
 
 
 {-| Initial state where the entire tree is fully expanded.
@@ -251,14 +311,16 @@ defaultState =
 -}
 stateToJson : State -> Encode.Value
 stateToJson (State keyPaths) =
-    Encode.set Encode.string keyPaths
+    Encode.list encodeKeyPath (Set.toList keyPaths)
 
 
 {-| Decode the state of a tree from JSON.
 -}
 stateFromJson : Decoder State
 stateFromJson =
-    Decode.map (State << Set.fromList) (Decode.list Decode.string)
+    Decode.map
+        (newSet >> State)
+        (Decode.list decodeKeyPath)
 
 
 {-| Collapses any nodes deeper than `maxDepth`.
@@ -311,7 +373,7 @@ expandAll _ =
 
 stateFullyExpanded : State
 stateFullyExpanded =
-    State (Set.fromList [])
+    State (Set.fromList keyPathToString [])
 
 
 
@@ -386,7 +448,7 @@ viewScalar : List ( String, String ) -> String -> Node -> Config msg -> List (Ht
 viewScalar someCss str node config =
     List.singleton <|
         span
-            ([ id node.keyPath ]
+            ([ id (keyPathToString node.keyPath) ]
                 ++ styleList someCss
                 ++ (case config.onSelect of
                         Just onSelect ->
