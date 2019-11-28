@@ -8,7 +8,7 @@ module JsonTree exposing
     , expandAll, collapseToDepth
     , Colors, defaultColors
     , stateToJson, stateFromJson
-    , KeyPathComponent(..)
+    , KeyPathComponent(..), decodeKeyPath, encodeKeyPath, keyPathComponentToString, keyPathToString
     )
 
 {-| This library provides a JSON tree view. You feed it JSON, and it transforms it into
@@ -51,14 +51,16 @@ Features:
 -}
 
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, li, span, text, ul)
+import Html exposing (Attribute, Html, div, li, span, text, ul)
 import Html.Attributes exposing (class, id, style)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Set.Any as Set exposing (AnySet)
 
-type alias Set key val = AnySet key val
+
+type alias Set key val =
+    AnySet key val
 
 
 {-| A node in the tree
@@ -80,65 +82,91 @@ type TaggedValue
     | TNull
 
 
+
 -- [decgen-start]
+
+
 {-| The path to a piece of data in the tree.
 -}
 type alias KeyPath =
     List KeyPathComponent
 
-type KeyPathComponent =
-    ObjectAccessor String
+
+type KeyPathComponent
+    = ObjectAccessor String
     | IndexAccessor Int
 
+
+
 -- [decgen-generated-start] -- DO NOT MODIFY or remove this line
+
+
 decodeKeyPath =
-   Decode.list decodeKeyPathComponent
+    Decode.list decodeKeyPathComponent
+
 
 decodeKeyPathComponent =
-   Decode.field "Constructor" Decode.string |> Decode.andThen decodeKeyPathComponentHelp
+    Decode.field "Constructor" Decode.string |> Decode.andThen decodeKeyPathComponentHelp
+
 
 decodeKeyPathComponentHelp constructor =
-   case constructor of
-      "ObjectAccessor" ->
-         Decode.map
-            ObjectAccessor
-               ( Decode.field "A1" Decode.string )
-      "IndexAccessor" ->
-         Decode.map
-            IndexAccessor
-               ( Decode.field "A1" Decode.int )
-      other->
-         Decode.fail <| "Unknown constructor for type KeyPathComponent: " ++ other
+    case constructor of
+        "ObjectAccessor" ->
+            Decode.map
+                ObjectAccessor
+                (Decode.field "A1" Decode.string)
+
+        "IndexAccessor" ->
+            Decode.map
+                IndexAccessor
+                (Decode.field "A1" Decode.int)
+
+        other ->
+            Decode.fail <| "Unknown constructor for type KeyPathComponent: " ++ other
+
 
 encodeKeyPath a =
-   (Encode.list encodeKeyPathComponent) a
+    Encode.list encodeKeyPathComponent a
+
 
 encodeKeyPathComponent a =
-   case a of
-      ObjectAccessor a1->
-         Encode.object
-            [ ("Constructor", Encode.string "ObjectAccessor")
-            , ("A1", Encode.string a1)
-            ]
-      IndexAccessor a1->
-         Encode.object
-            [ ("Constructor", Encode.string "IndexAccessor")
-            , ("A1", Encode.int a1)
-            ] 
+    case a of
+        ObjectAccessor a1 ->
+            Encode.object
+                [ ( "Constructor", Encode.string "ObjectAccessor" )
+                , ( "A1", Encode.string a1 )
+                ]
+
+        IndexAccessor a1 ->
+            Encode.object
+                [ ( "Constructor", Encode.string "IndexAccessor" )
+                , ( "A1", Encode.int a1 )
+                ]
+
+
+
 -- [decgen-end]
 
 
-newSet = Set.fromList keyPathToString
+newSet : List KeyPath -> Set.AnySet String KeyPath
+newSet =
+    Set.fromList keyPathToString
+
 
 keyPathToString : KeyPath -> String
 keyPathToString =
-    List.map accessorToString
-    >> String.join " "
+    List.map keyPathComponentToString
+        >> String.join ""
 
-accessorToString a =
+
+keyPathComponentToString : KeyPathComponent -> String
+keyPathComponentToString a =
     case a of
-        ObjectAccessor o -> o
-        IndexAccessor i -> String.fromInt i
+        ObjectAccessor o ->
+            "." ++ o
+
+        IndexAccessor i ->
+            "[" ++ String.fromInt i ++ "]"
 
 
 {-| The colors to be used when showing elements of the JSON Tree.
@@ -205,7 +233,7 @@ parseString string =
 coreDecoder : Decoder Node
 coreDecoder =
     let
-        makeNode : TaggedValue -> {value : TaggedValue, keyPath : KeyPath}
+        makeNode : TaggedValue -> { value : TaggedValue, keyPath : KeyPath }
         makeNode v =
             { value = v, keyPath = [] }
     in
@@ -223,10 +251,10 @@ annotate : KeyPath -> Node -> Node
 annotate pathSoFar node =
     let
         annotateList index val =
-            annotate (pathSoFar ++ [IndexAccessor index]) val
+            annotate (pathSoFar ++ [ IndexAccessor index ]) val
 
         annotateDict fieldName val =
-            annotate (pathSoFar ++ [ObjectAccessor fieldName]) val
+            annotate (pathSoFar ++ [ ObjectAccessor fieldName ]) val
     in
     case node.value of
         TString _ ->
